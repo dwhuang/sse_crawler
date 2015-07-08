@@ -3,6 +3,8 @@
 
 import os
 import requests
+import socket
+import time
 from lxml import etree
 
 def fetch(url, fname, encoding='utf-8'):
@@ -19,6 +21,7 @@ def fetch(url, fname, encoding='utf-8'):
                 if i == 9:
                     raise RuntimeError("connection timed out, tried 10 times",
                             url, fname)
+                time.sleep(5)
         r.encoding = encoding
         content = r.text
         if encoding is not None:
