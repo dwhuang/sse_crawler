@@ -6,6 +6,9 @@ import requests
 import socket
 import time
 from lxml import etree
+import json
+import re
+from sections import sections
 
 def fetch(url, fname, encoding='utf-8'):
     fname = "cache/" + fname
@@ -33,7 +36,7 @@ def fetch(url, fname, encoding='utf-8'):
         # Read the cache file
         with open(fname, 'rb') as f:
             content = f.read()
-        print "read complete: " + fname
+        #print "read complete: " + fname
     return content
 
 def getIndex(url, fname, encoding='utf-8'):
@@ -55,12 +58,6 @@ def getIndex(url, fname, encoding='utf-8'):
 
 def main():
     baseurl = "http://listxbrl.sse.com.cn"
-    taburls = {u"基本信息": "/companyInfo/showmap.do",
-            u"股本結構": "/capital/showmap.do",
-            u"前十大股東": "/companyInfo/showTopTenMap.do",
-            u"資產負債表": "/companyInfo/showBalance.do",
-            u"利潤表": "/profit/showmap.do",
-            u"現金流量表": "/cash/showmap.do",}
     # create cache dir
     try:
         os.mkdir("cache")
@@ -69,13 +66,53 @@ def main():
     # fetch stock ids and shortnames
     indexurl = "http://www.sse.com.cn/disclosure/listedinfo/regular/"
     stocklist = getIndex(indexurl, "index.html")
-    # fetch tabs for each stocks
+    # for each stock/company
+    alldata = []
     for (stockid, shortname) in stocklist:
-        for (tabname, taburl) in taburls.items():
-            url = baseurl + taburl + "?stock_id=" + stockid \
+        companydata = {"id": stockid, "shortname": shortname, "data": []}
+        for (sectname, secturl, rowtitles) in sections:
+            url = baseurl + secturl + "?stock_id=" + stockid \
                     + "&report_year=2015&report_period_id=5000"
-            tabfname = stockid + "-" + tabname
-            fetch(url, tabfname)
+            sectfname = stockid + "-" + sectname
+            rawdata = fetch(url, sectfname)
+            try:
+                rawdata = json.loads(rawdata)
+            except ValueError as e:
+                print "***** section has no data"
+                print e
+                print stockid, sectname, url
+                companydata['data'].append([]) # note empty list
+                continue
+            # sanity check: check for inconsistent number of rows
+            if len(rowtitles) != len(rawdata['rows']):
+                print "***** num row titles ", len(rowtitles), \
+                        " != num rows ", len(rawdata['rows'])
+            # get column titles: (fieldname, year)
+            coltitles = []
+            for col in rawdata['columns'][0]:
+                coltitles.append((col['field'], col['title']))
+            # get data in each row
+            sectdata = []
+            for row in rawdata['rows']:
+                rowdata = []
+                for col in coltitles:
+                    if col[0] in row:
+                        field = row[col[0]]
+                    else:
+                        field = ""
+                    if isinstance(field, basestring):
+                        # strip <div>
+                        field = re.sub(r"<\/?div.*?>", "", field)
+                        # replace <br> with ;
+                        field = re.sub(r"<\/?br.*?>", ";", field)
+                    rowdata.append((col[1], field))
+                sectdata.append(rowdata)
+            companydata['data'].append(sectdata)
+        alldata.append(companydata)
+    # save
+    jsondata = json.dumps(alldata, ensure_ascii=False).encode('utf-8')
+    with open('data.json', 'wb') as f:
+        f.write(jsondata)
 
 if __name__ == '__main__':
     main()
