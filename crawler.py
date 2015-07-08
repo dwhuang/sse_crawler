@@ -14,7 +14,8 @@ def fetch(url, fname, encoding='utf-8'):
             try:
                 r = requests.get(url, timeout=30)
                 break
-            except requests.exceptions.Timeout:
+            except (requests.exceptions.Timeout, socket.timeout):
+                print "fetch timed out, try again..."
                 if i == 9:
                     raise RuntimeError("connection timed out, tried 10 times",
                             url, fname)
