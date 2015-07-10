@@ -1,7 +1,7 @@
 # sse_crawler
 A crawler for Shanghai Stock Exchange XBRL data
 
-Data structure (results/data.json):
+JSON structure (results/data.json):
 - (top level): [ **company**, **company**, ... ]
 - **company**: { 'id': *stock_id*, 'shortname': *short_company_name*, 'data': **data** }
 - **data**: [ **section_data**, **section_data**, ... ]
@@ -13,5 +13,8 @@ Data structure (results/data.json):
 - **data_field**: [ **entry**, **entry**, ... ]
 - **entry**: [ *year*, *data_value* ]
 
-Todo:
-- CSV output (maybe)
+The csv files in `results/` are extracted from the JSON file by `gencsv.py`
+
+Related URLs
+- http://listxbrl.sse.com.cn/companyInfo/toCompanyInfo.do?stock_id=600020&report_year=2014&report_period_id=5000
+- http://www.sse.com.cn/disclosure/listedinfo/regular/
